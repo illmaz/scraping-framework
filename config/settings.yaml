@@ -1,0 +1,56 @@
+# settings.yaml — global defaults for the entire framework
+# Site-specific configs can override any value here under a `overrides:` key.
+
+http:
+  # Seconds to wait between requests. Be a polite scraper.
+  # At 2s delay you make ~30 requests/min — plenty for a portfolio project.
+  request_delay: 2.0
+
+  # Random jitter added to request_delay to look less bot-like.
+  # Actual delay = request_delay + random(0, jitter)
+  jitter: 0.5
+
+  # How many times to retry a failed request before giving up.
+  max_retries: 3
+
+  # Seconds to wait before first retry. Doubles each attempt (exponential backoff).
+  # Attempt 1: 2s  |  Attempt 2: 4s  |  Attempt 3: 8s
+  retry_backoff: 2.0
+
+  # Timeout in seconds for a single HTTP request.
+  request_timeout: 30
+
+  # Sent with every request so sites know who's scraping.
+  # Replace with your own contact info — this is good scraping etiquette.
+  user_agent: "PortfolioScraper/1.0 (+https://github.com/yourname/scraping-framework)"
+
+robots:
+  # Whether to check and respect robots.txt before scraping.
+  # ALWAYS keep this true — it's what separates ethical scraping from abuse.
+  respect_robots_txt: true
+
+  # Cache the parsed robots.txt in memory to avoid re-fetching it on every request.
+  cache_robots: true
+
+output:
+  # Where all scraped data files are written.
+  base_dir: "output"
+
+  # Timestamp format appended to each output file: books_20250503.json
+  timestamp_format: "%Y%m%d"
+
+  # Write both formats by default. Can be overridden per-site.
+  formats:
+    - json
+    - csv
+
+  # If true, skip rows that are exact duplicates of already-scraped rows.
+  deduplicate: true
+
+  # Indent level for JSON output. Use null for compact (smaller files).
+  json_indent: 2
+
+logging:
+  level: "INFO"   # DEBUG | INFO | WARNING | ERROR
+  log_to_file: true
+  log_dir: "logs"

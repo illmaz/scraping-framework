@@ -1,0 +1,108 @@
+# books.yaml — configuration for books.toscrape.com
+#
+# Site profile: Static HTML e-commerce catalogue.
+# 1,000 books across 50 pages. No JavaScript required.
+# robots.txt allows all crawling. Explicitly built for scraping practice.
+
+site:
+  name: "books_toscrape"
+  base_url: "https://books.toscrape.com"
+
+  # "static"  → use requests + BeautifulSoup (fast, lightweight)
+  # "js_heavy" → use Playwright headless browser (slower, for JS-rendered pages)
+  engine: "static"
+
+# --- URL & Pagination ---
+# This site uses simple page-number URLs:
+#   Page 1: /catalogue/page-1.html
+#   Page 2: /catalogue/page-2.html  ... etc.
+# Strategy "page_number" tells the engine to increment a counter and
+# stop when it gets a 404 or finds no more items.
+
+pagination:
+  strategy: "page_number"
+  start_url: "https://books.toscrape.com/catalogue/page-1.html"
+  url_template: "https://books.toscrape.com/catalogue/page-{page}.html"
+  start_page: 1
+  max_pages: 50       # hard cap — prevents runaway scraping
+  items_per_page: 20  # informational, used in progress logging
+
+# --- CSS Selectors ---
+# These tell BeautifulSoup exactly where to find each piece of data.
+# Tip: open DevTools (F12) on the site and use "Copy selector" to find these.
+#
+# "container" is the repeating block for one item.
+# Each field inside "fields" is extracted relative to that container.
+
+selectors:
+  # The repeating element wrapping one book on the listing page.
+  container: "article.product_pod"
+
+  fields:
+    title:
+      # The full title lives in the <a> tag's `title` attribute, not its text.
+      # The visible text is truncated; the attribute always has the full name.
+      selector: "h3 > a"
+      attribute: "title"    # extract the HTML attribute, not the tag's text
+
+    price:
+      selector: "p.price_color"
+      attribute: "text"     # extract the visible text content
+
+    rating:
+      # Rating is encoded as a CSS class: "One", "Two", "Three", "Four", "Five"
+      # We grab the class list and parse the word from it in Python.
+      selector: "p.star-rating"
+      attribute: "class"    # returns e.g. ["star-rating", "Three"]
+
+    availability:
+      selector: "p.availability"
+      attribute: "text"
+
+    detail_url:
+      # The href points to the book's detail page (relative URL).
+      # Python code will join this with base_url to make it absolute.
+      selector: "h3 > a"
+      attribute: "href"
+
+# --- Detail Page (optional) ---
+# If you want to follow each book's link and scrape richer data
+# (description, genre, UPC, number of reviews), enable this section.
+# WARNING: This turns 50 requests into 1,000+. Use carefully.
+
+detail_page:
+  enabled: false   # flip to true to enable deep scraping
+  selectors:
+    description:
+      selector: "#product_description ~ p"
+      attribute: "text"
+    genre:
+      selector: "ul.breadcrumb li:nth-child(3) > a"
+      attribute: "text"
+    upc:
+      selector: "table.table-striped tr:nth-child(1) td"
+      attribute: "text"
+    num_reviews:
+      selector: "table.table-striped tr:nth-child(7) td"
+      attribute: "text"
+
+# --- Output ---
+output:
+  filename: "books"          # final file: output/books_20250503.json
+  formats:                   # overrides global setting for this site
+    - json
+    - csv
+
+  # Column order in the CSV output.
+  csv_fields:
+    - title
+    - price
+    - rating
+    - availability
+    - detail_url
+
+# --- Behaviour overrides ---
+# These override the global settings.yaml values just for this site.
+overrides:
+  request_delay: 1.5   # books.toscrape is a sandbox, slightly faster is fine
+  max_pages: 50

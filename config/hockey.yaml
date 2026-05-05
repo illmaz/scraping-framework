@@ -1,0 +1,111 @@
+# hockey.yaml — configuration for scrapethissite.com/pages/forms/
+#
+# Site profile: Paginated HTML table (hockey team statistics).
+# Represents the "job board / data table" category in our framework.
+# Static HTML with server-side pagination driven by a search query param.
+#
+# The page lists NHL teams with wins, losses, goals for/against, etc.
+# Pagination works via ?page_num=1, ?page_num=2 query parameters.
+
+site:
+  name: "hockey_stats"
+  base_url: "https://www.scrapethissite.com"
+  engine: "static"
+
+# --- URL & Pagination ---
+# This site paginates via a query parameter: ?page_num=N
+# Strategy "query_param" increments the param and stops when
+# the response contains no items (empty page = we're done).
+
+pagination:
+  strategy: "query_param"
+  start_url: "https://www.scrapethissite.com/pages/forms/"
+
+  # The query parameter name to increment.
+  page_param: "page_num"
+  start_page: 1
+  max_pages: 25   # ~24 pages of NHL data on this site
+
+  # Some query-param sites need you to preserve other params in the URL.
+  # List any fixed params here — they'll be merged with the page param.
+  fixed_params:
+    q: ""   # the search box (empty = return all teams)
+
+# --- CSS Selectors ---
+# Data lives inside a standard <table> element.
+# "container" is one <tr> row; fields are the <td> cells within it.
+
+selectors:
+  # Each row in the results table represents one team-season.
+  container: "table.table > tbody > tr"
+
+  fields:
+    team_name:
+      selector: "td.name"
+      attribute: "text"
+
+    year:
+      selector: "td.year"
+      attribute: "text"
+
+    wins:
+      selector: "td.wins"
+      attribute: "text"
+
+    losses:
+      selector: "td.losses"
+      attribute: "text"
+
+    overtime_losses:
+      # Column header: "OT Losses". Some rows have empty cells for older seasons.
+      selector: "td.ot-losses"
+      attribute: "text"
+      # If the cell is empty or missing, use this value instead of null.
+      default: "0"
+
+    goals_for:
+      selector: "td.gf"
+      attribute: "text"
+
+    goals_against:
+      selector: "td.ga"
+      attribute: "text"
+
+    win_percentage:
+      selector: "td.pct"
+      attribute: "text"
+
+# --- Data types ---
+# Tell the output manager how to cast each field.
+# This is applied after extraction — string → int/float/etc.
+# Keeps your downstream pandas / SQL schemas clean.
+
+field_types:
+  team_name: str
+  year: int
+  wins: int
+  losses: int
+  overtime_losses: int
+  goals_for: int
+  goals_against: int
+  win_percentage: float
+
+# --- Output ---
+output:
+  filename: "hockey_stats"
+  formats:
+    - json
+    - csv
+  csv_fields:
+    - team_name
+    - year
+    - wins
+    - losses
+    - overtime_losses
+    - goals_for
+    - goals_against
+    - win_percentage
+
+# --- Behaviour overrides ---
+overrides:
+  request_delay: 2.0

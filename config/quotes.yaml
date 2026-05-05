@@ -1,0 +1,113 @@
+# quotes.yaml — configuration for quotes.toscrape.com/js
+#
+# Site profile: JavaScript-rendered quotes site.
+# The /js endpoint renders all content via client-side JavaScript —
+# a plain requests.get() returns a nearly empty HTML shell.
+# Playwright loads the page in a real browser, executes the JS,
+# then hands us the fully-rendered DOM to parse.
+#
+# Also demonstrates login scraping (optional section below).
+
+site:
+  name: "quotes_toscrape_js"
+  base_url: "https://quotes.toscrape.com"
+
+  # Must be "js_heavy" because content is JavaScript-rendered.
+  # The engine router will spin up a Playwright browser for this site.
+  engine: "js_heavy"
+
+# --- Playwright browser settings ---
+# These only apply when engine is "js_heavy".
+
+playwright:
+  browser: "chromium"    # chromium | firefox | webkit
+  headless: true         # false shows the browser window (useful for debugging)
+
+  # After navigating to a page, wait for this CSS selector to appear in the DOM
+  # before we start extracting data. This is how we know the JS has finished rendering.
+  # If you don't set this, Playwright might read the page before React/Vue has mounted.
+  wait_for_selector: "div.quote"
+
+  # Additional wait in milliseconds after the selector appears.
+  # Small buffer for any late-loading elements.
+  wait_after_load_ms: 500
+
+# --- URL & Pagination ---
+# This site uses a "next" button for pagination.
+# Strategy "next_button" tells the engine to click the next button
+# (or follow its href) until it no longer exists in the DOM.
+
+pagination:
+  strategy: "next_button"
+  start_url: "https://quotes.toscrape.com/js"
+
+  # CSS selector for the "Next →" pagination link.
+  # We extract its href and navigate to it. When this selector is absent,
+  # we know we've hit the last page.
+  next_selector: "li.next > a"
+
+  max_pages: 10    # 10 pages × 10 quotes = 100 quotes total on this site
+
+# --- CSS Selectors ---
+# Extracted from the rendered DOM, not the raw HTML source.
+# Use browser DevTools on the /js page to verify these.
+
+selectors:
+  container: "div.quote"
+
+  fields:
+    text:
+      selector: "span.text"
+      attribute: "text"      # the quote content, including the curly quotes
+
+    author:
+      selector: "small.author"
+      attribute: "text"
+
+    author_url:
+      # Each author has a "about" page linked from their name.
+      selector: "span > a"
+      attribute: "href"      # relative URL e.g. /author/Albert-Einstein
+
+    tags:
+      # Multiple <a class="tag"> elements per quote.
+      # The Python extractor will return a list when multiple=true.
+      selector: "div.tags > a.tag"
+      attribute: "text"
+      multiple: true         # collect ALL matching elements, not just the first
+
+# --- Login (optional) ---
+# quotes.toscrape.com has a login page that reveals "top ten tags" content.
+# This section demonstrates how to store login config.
+# WARNING: Never put real credentials in YAML committed to git.
+#          Use environment variables and reference them here.
+#          The Python code will read: os.environ["QUOTES_PASSWORD"]
+
+login:
+  enabled: false    # set to true to enable authenticated scraping
+  login_url: "https://quotes.toscrape.com/login"
+  selectors:
+    username_field: "input#username"
+    password_field: "input#password"
+    submit_button: "input[type='submit']"
+  credentials:
+    username: "${QUOTES_USERNAME}"   # reads from environment variable
+    password: "${QUOTES_PASSWORD}"
+
+# --- Output ---
+output:
+  filename: "quotes"
+  formats:
+    - json
+    - csv
+  csv_fields:
+    - text
+    - author
+    - tags
+    - author_url
+
+# --- Behaviour overrides ---
+overrides:
+  # Playwright is heavier than requests. Give it more time between pages.
+  request_delay: 3.0
+  max_retries: 2   # browser sessions are expensive, fail faster
